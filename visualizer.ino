@@ -9,10 +9,6 @@
 #define QUARTER (NUM_LEDS/4)
 #define THIRD_QUARTER QUARTER*3
 
-//To Do:
-//Both Explosion and randomLEDs needs to be revisited, due to an out of bounds issue.
-
-
 enum MODE { INSIDE_OUT, OUTSIDE_IN, LEVELS, MULTI_LEVELS, RANDOM, DEBUG, EXPLOSION, ALTERNATE, MUSIC_LINE};
 
 unsigned long last_event = 0UL;
@@ -21,33 +17,27 @@ CRGB leds[NUM_LEDS];
 MODE currentMode = MUSIC_LINE;
 int highestLevel = 0;
 int lowestLevel = 0;
+int bright = 255;
+int rBright = 0;
+bool reverse = false;
 
-//hue = 136 purple
-//hue = 165 dark blue
-//hue = 94 = red
 int colours[4] = {50, 94, 136, 165};
 
-
 void setup() { 
-  //Remove the following two lines when complete
-  Serial.begin(9600);
-  Serial.println("resetting");
   FastLED.addLeds<WS2812B,DATA_PIN,RGB>(leds,NUM_LEDS);
   FastLED.setBrightness(84);
   randomSeed(analogRead(A5));
 }
 
 //Helper functions
-// void fadeall() { for(int i = 0; i < NUM_LEDS; i++) { leds[i].nscale8(250); } }
 void fadeall() { for(int i = 0; i < NUM_LEDS; i++) { leds[i] = CHSV(0,0,0); } }
 
 int setRandomColour() {
   return (rand() % sizeof(colours) / sizeof(colours[0]) -1);
 }
 
-
-//Lighting Modes
-void insideOut(int val) {
+//Lighting Modes----
+void quarters(int val) {
   if(val <= BASE_LEVEL)
     return 0;
   int mVal = val - BASE_LEVEL;
@@ -64,8 +54,6 @@ void insideOut(int val) {
 }
 
 void outsideIn(int val) {
-  //Rework the following lines.
-  //Can assign and check
   if(val <= BASE_LEVEL)
     return 0;
   int mVal = val - BASE_LEVEL;
@@ -115,8 +103,8 @@ void explosion(int val, int hue) {
       return;
 
     for(int i = 0; i <= EXPLOSION_LIMIT; ++i) {
-      leds[mVal + i] = CHSV(hue,255,255-(i*12));
-      leds[mVal - i] = CHSV(hue,255,255-(i*12));
+      leds[mVal + i - EXPLOSION_LIMIT - 1] = CHSV(hue,255,255-(i*12));
+      leds[mVal - i + EXPLOSION_LIMIT + 1] = CHSV(hue,255,255-(i*12));
       FastLED.show();
     }
     for(int i = 0; i <= EXPLOSION_LIMIT; ++i) {
@@ -132,8 +120,8 @@ void randomLEDs(int val) {
   int randomLED = random(EXPLOSION_LIMIT + 1, NUM_LEDS - EXPLOSION_LIMIT);
   double mVal = ( (double)(val) / (double)highestLevel);
   for(int i = 0; i <= EXPLOSION_LIMIT; ++i) {
-      leds[randomLED + i] = CHSV(floor(mVal * 255.0) ,255,255-(i*12));
-      leds[randomLED - i] = CHSV(floor(mVal * 255.0),255,255-(i*12));
+      leds[randomLED + i - EXPLOSION_LIMIT - 1] = CHSV(floor(mVal * 255.0) ,255,255-(i*12));
+      leds[randomLED - i + EXPLOSION_LIMIT + 1] = CHSV(floor(mVal * 255.0),255,255-(i*12));
       FastLED.show();
     }
     for(int i = 0; i <= EXPLOSION_LIMIT; ++i) {
@@ -167,15 +155,6 @@ void musicLine(int val) {
   FastLED.show();
 }
 
-//A pattern that sends out waves.
-//Capture 5 vals, and colour the lights based on their levels, and send it out in a wave.
-//Repeat for the next 5.
-
-
-int bright = 255;
-int rBright = 0;
-bool reverse = false;
-
 void alternate(int val) {
   if(val <= BASE_LEVEL+50)
     return;
@@ -202,6 +181,7 @@ void alternate(int val) {
   FastLED.show(); 
 }
 
+//Main loop
 void loop() { 
   int val = 0;
   int hue = 0;
@@ -229,7 +209,7 @@ void loop() {
       multiLightUpAndFade(val, colours[hue]);
       break;
     case INSIDE_OUT:
-      insideOut(val);
+      quarters(val);
       break;
     case OUTSIDE_IN:
       outsideIn(val);
